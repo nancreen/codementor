@@ -1,0 +1,47 @@
+.big-row{
+    height: 1000px;
+}
+
+.speed-row{
+    height: 50px;
+}
+
+.big-diagram{
+    max-width: 1000px;
+}
+
+.superfast{
+  text-align: center;
+  border: 3px solid green;
+    background-color: green;
+    color: papayawhip;
+    min-width: 50px;
+    height: 20px;
+}
+
+.ok{
+  text-align: center;
+  border: 3px solid dodgerblue;
+    background-color: dodgerblue;
+    color: papayawhip;
+    min-width: 50px;
+    height: 20px;
+}
+
+.not-good{
+  text-align: center;
+  border: 3px solid coral;
+    background-color: coral;
+    color: papayawhip;
+    min-width: 50px;
+    height: 20px;
+}
+
+.bad{
+  text-align: center;
+  border: 3px solid darkred;
+    background-color: darkred;
+    color: papayawhip;
+    min-width: 50px;
+    height: 20px;
+}

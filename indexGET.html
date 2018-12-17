@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>Searchy scraper initiated</title>
+    <!-- {% load staticfiles %} -->
+      <!--<link rel="shortcut icon" type="image/png" href="{%  static 'favicon.ico' %}"/>-->
+      <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+      <link href='https://fonts.googleapis.com/css?family=Satisfy' rel='stylesheet' type='text/css'>
+     <link rel="stylesheet" href="Treant.css'>
+       <link rel="stylesheet" href="gauge.css">
+
+    <link rel="stylesheet" href="connectors.css">
+
+      <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.0/jquery.min.js"></script>
+      <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.6.0/Chart.min.js"></script>
+
+
+
+  </head>
+  <body>
+
+
+
+
+<div class="jumbotron">
+  <div class="container-fluid">
+    <form class="navbar-form" role="search" method="GET" action="{% url 'crawl' %}">
+      <div class="form-group">
+        {% csrf_token %}
+
+            <div class="row my-row">
+                    <div class="col-md-2 col-sm-2 my-col"></div>
+
+                    <div class="col-md-8 col-sm-8 my-col">
+                        <div class="center-block">
+                        <h1>Searchy scanner</h1><br/>
+                            <h2>Requested data will be there in a minute.</h2>
+                                {% if unique_id %}
+                                <h3>Target: {{ target }}</h3>
+
+                                  <h3>Unique_id: {{ unique_id }}</h3>
+
+                                {% endif %}
+
+
+                                {% if error %}
+
+                                    <h2>Error: {{ error }}</h2>
+
+                                {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="col-md-2 col-sm-2 my-col"></div>
+                </div>
+
+
+
+             <div class="row my-row">
+                    <div class="col-md-2 col-sm-2 my-col"></div>
+
+                    <div class="col-md-8 col-sm-8 my-col">
+                        <div class="center-block">
+                            <progress id="progressBar" value="0" max="100" style="width:300px;"></progress>
+                            </div>
+                        <span id="status"></span>
+                    </div>
+
+                    <div class="col-md-2 col-sm-2 my-col"></div>
+                </div>
+
+
+                <div class="row my-row speed-row">
+                    <div class="col-md-3 col-sm-3 my-col"></div>
+
+                    <div class="col-md-6 col-sm-6 my-col">
+                        <div class="center-block">
+                            <p id="resp_speed"></p>
+                            </div>
+
+                            </div>
+                    </div>
+
+                    <div class="col-md-3 col-sm-3 my-col"></div>
+                </div>
+
+                <div class="row my-row">
+
+                </div>
+
+                <div class="row my-row">
+                 <div class="col-md-1 col-sm-1 my-col"></div>
+
+                   <div class="col-md-10 col-sm-10 my-col">
+                        <div id="chartContainer" style="height: 370px; width: 100%;"></div>
+                    </div>
+
+                <div class="col-md-1 col-sm-1 my-col"></div>
+                </div>
+
+             <div class="row my-row">
+                 <div class="col-md-1 col-sm-1 my-col"></div>
+
+                   <div class="col-md-10 col-sm-10 my-col">
+                        <div id="percentContainer" style="height: 370px; width: 100%;"></div>
+                    </div>
+
+                <div class="col-md-1 col-sm-1 my-col"></div>
+                </div>
+
+            <div class="row my-row big-row">
+                 <div class="col-md-1 col-sm-1 my-col"></div>
+
+                   <div class="col-md-10 col-sm-10 my-col">
+                        <div id="kwrds_table" style="height: 370px; width: 100%;"></div>
+                    </div>
+
+                <div class="col-md-1 col-sm-1 my-col"></div>
+                </div>
+
+             <div class="row my-row">
+
+                   <div class="col-md-12 col-sm-12 my-col">
+                        <div class="chart" id="OrganiseChart-big-commpany"></div>
+                    </div>
+
+                </div>
+
+
+            <div class="row my-row">
+                     <div class="col-md-1 col-sm-1 my-col"></div>
+
+                       <div class="col-md-10 col-sm-10 my-col">
+                           <form class="navbar-form" role="search" method="GET" action="{% url 'crawl' %}">
+                              <div class="form-group">
+                                {% csrf_token %}
+                                <h2>Get results from a previous search:</h2><br/>
+                                  <input id="prev-search-id" type="text" placeholder="unique_id">
+                                  <input id="prev-search-bttn" type="button" value="Search">
+                                  </div>
+                            </form>
+                        </div>
+
+                    <div class="col-md-1 col-sm-1 my-col"></div>
+                    </div>
+
+
+</form>
+
+
+
+<!--Loaded here, since, reportedly, there might be issues with loading it in the head-->
+  <script src="raphael.js"></script>
+    <script src="Treant.js"></script>
+
+    <script src="canvas.js"></script>
+
+  <script>
+
+    //here we create a new web socket.
+    //routing.py instantiates a StatusConsumer,
+    //which returns search results, after being updated by the ScrapyItem method
+    //called in the results view
+    let chatSocket = new WebSocket(`ws://${window.location.host}/ws/status/{{ unique_id }}/`);
+
+    {#var progress = 0;#}
+    function load_prog_bar(al) {
+        var bar = document.getElementById('progressBar');
+        var status = document.getElementById('status');
+        status.innerHTML = al+"%";
+        bar.value = al;
+        console.log(al);
+        if(al == 100){
+          status.innerHTML = "100%";
+          bar.value = 100;
+
+        }
+    }
+
+
+    chatSocket.onmessage = function(e) {
+        let event_data = JSON.parse(e.data);
+        console.log('got message');
+        console.log(event_data);
+
+        try {
+            var stat_data = JSON.parse(event_data.stat_data);
+            var nodes = JSON.parse(event_data.data);
+        }
+        catch (err) {
+            var prog = event_data.prog;
+        if (prog !== 'finished'){
+            load_prog_bar(prog)
+            };
+        };
+
+
+        if (nodes !== undefined) {
+            console.log(Object.prototype.toString.call(nodes));
+            console.log(nodes);
+            console.log(stat_data.most_common_kwrds);
+
+            var avrg_speed = stat_data.average_response_time;
+            var congrats = "";
+            var speed_class = "";
+            if(avrg_speed<=3){
+                congrats = "Nice work: ";
+                speed_class = "superfast";
+            }
+            else if(avrg_speed>3 && avrg_speed<=7)
+            {
+                congrats = "Not great, but not terrible: ";
+                speed_class = "ok";
+            }
+            else if(avrg_speed>7 && avrg_speed<=10)
+            {
+                congrats = "Better late than never: ";
+                speed_class = "not-good";
+            }
+            else
+            {
+                congrats = "Yeah... ";
+                speed_class = "bad";
+            }
+
+            var speed_msg = document.getElementById("resp_speed");
+            speed_msg.innerText = (congrats + avrg_speed + "s");
+            speed_msg.className += speed_class;
+
+              var chart = new CanvasJS.Chart("chartContainer", {
+                    animationEnabled: true,
+                    theme: "dark2", // "light1", "light2", "dark1", "dark2"
+                    title:{
+                        text: "Other stats"
+                    },
+                    axisY: {
+                        title: "No."
+                    },
+                    data: [{
+                        type: "column",
+                        showInLegend: true,
+                        legendMarkerColor: "grey",
+                        legendText: "",
+                        dataPoints: [
+                            { y: stat_data.total_title_no, label: "Title tags" },
+                            { y: stat_data.total_descr_no,  label: "Description tags" },
+                            { y: stat_data.total_pages_w_h1,  label: "Pgs. with singe h1" },
+                            { y: stat_data.pages_w_multiple_h1,  label: "Pgs. with multiple h1 tags" },
+                            { y: stat_data.total_pages_w_kwrds,  label: "Pgs. with keyword tags" }
+                        ]
+                    }]
+                });
+                chart.render()
+
+
+            var chart = new CanvasJS.Chart("percentContainer", {
+                    animationEnabled: true,
+                    theme: "dark1", // "light1", "light2", "dark1", "dark2"
+                    title:{
+                        text: "Percent Stats"
+                    },
+                    axisY: {
+                        title: "%"
+                    },
+                    data: [{
+                        type: "column",
+                        showInLegend: true,
+                        legendMarkerColor: "grey",
+                        legendText: "",
+                        dataPoints: [
+                            { y: (stat_data.total_title_no/stat_data.total_page_no)*stat_data.total_page_no, label: "Title tags" },
+                            { y: (stat_data.total_descr_no/stat_data.total_page_no)*stat_data.total_page_no,  label: "Description tags" },
+                            { y: (stat_data.total_pages_w_h1/stat_data.total_page_no)*stat_data.total_page_no,  label: "Pgs. with singe h1" },
+                            { y: (stat_data.pages_w_multiple_h1/stat_data.total_page_no)*stat_data.total_page_no,  label: "Pgs. with multiple h1 tags" },
+                            { y: (stat_data.total_pages_w_kwrds/stat_data.total_page_no)*stat_data.total_page_no,  label: "Pgs. with keyword tags" }
+                        ]
+                    }]
+                });
+                chart.render()
+
+            function addTable() {
+                      var myTableDiv = document.getElementById("kwrds_table");
+
+                      var table = document.createElement('TABLE');
+                      table.border = 'none';
+                      // table.setAttribute("style", "border:none;");
+                      table.className += "table table-bordered";
+
+
+                      var tableHeading = document.createElement('THEAD');
+                      table.appendChild(tableHeading);
+                        var trh = document.createElement('TR');
+                        tableHeading.appendChild(trh);
+
+                          var td = document.createElement('TH');
+                          td.width = '75';
+                          td.setAttribute("style", "background-color:purlpe;");
+                          td.appendChild(document.createTextNode("Word"));
+                          trh.appendChild(td);
+
+                          var td = document.createElement('TH');
+                          td.width = '75';
+                          if (i==2){
+                          td.setAttribute("style", "color:coral;");
+                        }
+                        else{
+                          td.setAttribute("style", "background-color:purlpe;");
+                        }
+                          td.appendChild(document.createTextNode("Is in declared keywords"));
+                          trh.appendChild(td);
+
+
+
+                      var tableBody = document.createElement('TBODY');
+                      table.appendChild(tableBody);
+                      // table.setAttribute("style", ",border:none;");
+
+
+                      var kwrds = stat_data.most_common_kwrds;
+                      for (var i = 0; i < kwrds.length; i++) {
+                        var tr = document.createElement('TR');
+                        tableBody.appendChild(tr);
+
+                        var element = kwrds[i];
+                        var word = element[0];
+                        var counter = element[1];
+                          var td = document.createElement('TD');
+                          td.width = '75';
+                          td.setAttribute("style", "background-color:purlpe;");
+                          td.appendChild(document.createTextNode(word));
+                          tr.appendChild(td);
+
+                          var td = document.createElement('TD');
+                          td.width = '75';
+                          if (counter==0){
+                          td.setAttribute("style", "background-color:yellow;");
+                          td.appendChild(document.createTextNode("No"));
+                        }
+                        else{
+                          td.setAttribute("style", "background-color:green;");
+                          td.appendChild(document.createTextNode("Yes"));
+                        }
+
+                          tr.appendChild(td);
+
+                      }
+                      myTableDiv.appendChild(table);
+                    }
+            addTable();
+
+            var chart_config = {
+            chart: {
+                container: "#OrganiseChart-big-commpany",
+                levelSeparation: 45,
+
+                rootOrientation: "WEST",
+
+                nodeAlign: "BOTTOM",
+
+                connectors: {
+                    type: "step",
+                    style: {
+                        "stroke-width": 2
+                    }
+                },
+                node: {
+                    HTMLclass: "big-commpany"
+                }
+            },
+
+            nodeStructure: nodes
+            };
+
+        new Treant( chart_config );
+
+    }};
+
+</script>
+
+  </body>
+</html>
